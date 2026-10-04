@@ -1,11 +1,11 @@
 {
-  "version": "0.34.54",
-  "release_name": "Hungate Racing Assistant v0.34.54",
-  "release_url": "https://github.com/Hungatehgt/Hungate-Racing-Assistant-Updates/releases/tag/v0.34.54",
+  "version": "0.34.55",
+  "release_name": "Hungate Racing Assistant v0.34.55",
+  "release_url": "https://github.com/Hungatehgt/Hungate-Racing-Assistant-Updates/releases/tag/v0.34.55",
   "notes": "Public binary update channel for Hungate Racing Assistant. Source code remains private.",
-  "published_at": "2026-10-04T11:33:05Z",
-  "asset_name": "Hungate_Racing_Assistant_v0.34.54_Setup.exe",
-  "download_url": "https://github.com/Hungatehgt/Hungate-Racing-Assistant-Updates/releases/download/v0.34.54/Hungate_Racing_Assistant_v0.34.54_Setup.exe",
-  "size": 89611738,
-  "sha256": "126256d7b5607978a5cf69038ef4b4ed20c7d93ead4cb57da68c74797c894228"
+  "published_at": "2026-10-04T12:02:22Z",
+  "asset_name": "Hungate_Racing_Assistant_v0.34.55_Setup.exe",
+  "download_url": "https://github.com/Hungatehgt/Hungate-Racing-Assistant-Updates/releases/download/v0.34.55/Hungate_Racing_Assistant_v0.34.55_Setup.exe",
+  "size": 89625386,
+  "sha256": "37caacf2cd84b999b924c1b2af7146ab49702d2fceabc3b71fdbb4aaf1e3a2ba"
 }
