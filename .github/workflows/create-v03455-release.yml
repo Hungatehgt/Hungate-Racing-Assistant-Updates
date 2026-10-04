@@ -1,0 +1,27 @@
+name: Create HRA v0.34.55 Public Release
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/create-v03455-release.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create public binary release shell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view v0.34.55 >/dev/null 2>&1; then
+            echo 'v0.34.55 release already exists.'
+          else
+            gh release create v0.34.55 \
+              --title 'Hungate Racing Assistant v0.34.55' \
+              --notes 'Public binary distribution release for Hungate Racing Assistant. This repository does not contain the HRA source code.'
+          fi
