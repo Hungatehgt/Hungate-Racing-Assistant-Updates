@@ -1,0 +1,35 @@
+name: Export Canonical HRA v0.34.55
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/export-v03455-canonical.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: windows-latest
+    steps:
+      - name: Download canonical public release installer
+        shell: pwsh
+        run: |
+          $url='https://github.com/Hungatehgt/Hungate-Racing-Assistant-Updates/releases/download/v0.34.55/Hungate_Racing_Assistant_v0.34.55_Setup.exe'
+          $out=Join-Path $env:RUNNER_TEMP 'Hungate_Racing_Assistant_v0.34.55_Setup.exe'
+          & curl.exe -L --fail --silent --show-error $url -o $out
+          if($LASTEXITCODE-ne 0){throw "Download failed: $LASTEXITCODE"}
+          $item=Get-Item $out
+          if($item.Length-ne 89625386){throw "Size mismatch: $($item.Length)"}
+          $hash=(Get-FileHash $out -Algorithm SHA256).Hash.ToLowerInvariant()
+          if($hash-ne '37caacf2cd84b999b924c1b2af7146ab49702d2fceabc3b71fdbb4aaf1e3a2ba'){throw "SHA mismatch: $hash"}
+          "CANONICAL_EXE=$out" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "CANONICAL RELEASE VERIFIED | size=$($item.Length) | sha256=$hash"
+
+      - name: Upload canonical installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HRA-v0.34.55-canonical-release
+          path: ${{ env.CANONICAL_EXE }}
+          if-no-files-found: error
