@@ -1,0 +1,44 @@
+name: Verify Public HRA Update Channel
+
+on:
+  push:
+    paths:
+      - 'update.json'
+      - '.github/workflows/verify-public-update.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-anonymous-download:
+    runs-on: windows-latest
+    steps:
+      - name: Download public manifest anonymously
+        shell: pwsh
+        run: |
+          $manifestUrl = 'https://raw.githubusercontent.com/Hungatehgt/Hungate-Racing-Assistant-Updates/main/update.json'
+          $manifestPath = Join-Path $env:RUNNER_TEMP 'update.json'
+          & curl.exe -L --fail --silent --show-error $manifestUrl -o $manifestPath
+          if ($LASTEXITCODE -ne 0) { throw "Anonymous manifest download failed: $LASTEXITCODE" }
+          $m = Get-Content -Raw $manifestPath | ConvertFrom-Json
+          if ($m.version -ne '0.34.55') { throw "Expected v0.34.55, got $($m.version)" }
+          if ($m.asset_name -ne 'Hungate_Racing_Assistant_v0.34.55_Setup.exe') { throw "Unexpected asset name: $($m.asset_name)" }
+          if ([int64]$m.size -ne 89625386) { throw "Unexpected manifest size: $($m.size)" }
+          if ($m.sha256 -ne '37caacf2cd84b999b924c1b2af7146ab49702d2fceabc3b71fdbb4aaf1e3a2ba') { throw "Unexpected manifest SHA-256: $($m.sha256)" }
+          "MANIFEST_URL=$manifestUrl" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "ASSET_URL=$($m.download_url)" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Download installer anonymously and verify digest
+        shell: pwsh
+        run: |
+          $setup = Join-Path $env:RUNNER_TEMP 'Hungate_Racing_Assistant_v0.34.55_Setup.exe'
+          & curl.exe -L --fail --silent --show-error $env:ASSET_URL -o $setup
+          if ($LASTEXITCODE -ne 0) { throw "Anonymous installer download failed: $LASTEXITCODE" }
+          $item = Get-Item $setup
+          if ($item.Length -ne 89625386) { throw "Downloaded size mismatch: $($item.Length)" }
+          $hash = (Get-FileHash $setup -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($hash -ne '37caacf2cd84b999b924c1b2af7146ab49702d2fceabc3b71fdbb4aaf1e3a2ba') { throw "Downloaded SHA-256 mismatch: $hash" }
+          $head = [IO.File]::ReadAllBytes($setup)[0..1]
+          if ($head[0] -ne 0x4D -or $head[1] -ne 0x5A) { throw 'Downloaded file is not a Windows PE executable.' }
+          Write-Host "ANONYMOUS PUBLIC UPDATE VERIFY PASS | size=$($item.Length) | sha256=$hash"
