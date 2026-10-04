@@ -1,0 +1,61 @@
+name: Verify Installed HRA v0.34.55 Updater
+
+on:
+  push:
+    paths:
+      - '.github/workflows/verify-v03455-installed-updater.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-installed-updater:
+    runs-on: windows-latest
+    steps:
+      - name: Download and verify canonical installer anonymously
+        shell: pwsh
+        run: |
+          Remove-Item Env:HRA_GITHUB_TOKEN -ErrorAction SilentlyContinue
+          $url='https://github.com/Hungatehgt/Hungate-Racing-Assistant-Updates/releases/download/v0.34.55/Hungate_Racing_Assistant_v0.34.55_Setup.exe'
+          $setup=Join-Path $env:RUNNER_TEMP 'Hungate_Racing_Assistant_v0.34.55_Setup.exe'
+          & curl.exe -L --fail --silent --show-error $url -o $setup
+          if($LASTEXITCODE-ne 0){throw "Anonymous installer download failed: $LASTEXITCODE"}
+          $item=Get-Item $setup
+          if($item.Length-ne 89625386){throw "Installer size mismatch: $($item.Length)"}
+          $hash=(Get-FileHash $setup -Algorithm SHA256).Hash.ToLowerInvariant()
+          if($hash-ne '37caacf2cd84b999b924c1b2af7146ab49702d2fceabc3b71fdbb4aaf1e3a2ba'){throw "Installer SHA-256 mismatch: $hash"}
+          "SETUP_EXE=$setup" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Fresh install canonical v0.34.55
+        shell: pwsh
+        env:
+          HRA_SKIP_RUNTIME_BOOTSTRAP: '1'
+        run: |
+          $dir=Join-Path $env:RUNNER_TEMP 'hra-v03455-final'
+          if(Test-Path $dir){Remove-Item -Recurse -Force $dir}
+          $p=Start-Process $env:SETUP_EXE -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-',('/DIR="'+$dir+'"')) -Wait -PassThru
+          if($p.ExitCode-ne 0){throw "Canonical installer failed: $($p.ExitCode)"}
+          $exe=Join-Path $dir 'HungateRacingAssistant.exe'
+          if(-not(Test-Path $exe)){throw 'Installed HRA executable missing.'}
+          if((Get-Item $exe).VersionInfo.ProductVersion-notlike '0.34.55*'){throw "Installed HRA version mismatch: $((Get-Item $exe).VersionInfo.ProductVersion)"}
+          "INSTALLED_EXE=$exe" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Run installed HRA tokenless live updater self-test
+        shell: pwsh
+        run: |
+          Remove-Item Env:HRA_GITHUB_TOKEN -ErrorAction SilentlyContinue
+          $out=Join-Path $env:RUNNER_TEMP 'hra-v03455-live-selftest'
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          $p=Start-Process $env:INSTALLED_EXE -ArgumentList @('--update-live-selftest',('"'+$out+'"')) -Wait -PassThru
+          if($p.ExitCode-ne 0){throw "Installed HRA live updater self-test failed: $($p.ExitCode)"}
+          $marker=Join-Path $out 'public-update-live-selftest.txt'
+          if(-not(Test-Path $marker)){throw 'Installed HRA live self-test marker missing.'}
+          $text=Get-Content -Raw $marker
+          if($text-notmatch 'current=0\.34\.55'){throw "Current version mismatch: $text"}
+          if($text-notmatch 'latest=0\.34\.55'){throw "Latest version mismatch: $text"}
+          if($text-notmatch 'asset=Hungate_Racing_Assistant_v0\.34\.55_Setup\.exe'){throw "Asset mismatch: $text"}
+          if($text-notmatch 'raw\.githubusercontent\.com/Hungatehgt/Hungate-Racing-Assistant-Updates/main/update\.json'){throw "Public feed mismatch: $text"}
+          if($text-notmatch 'digest=sha256:37caacf2cd84b999b924c1b2af7146ab49702d2fceabc3b71fdbb4aaf1e3a2ba'){throw "Digest mismatch: $text"}
+          Write-Host "CANONICAL INSTALLED UPDATER PASS"
+          Write-Host $text
